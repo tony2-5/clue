@@ -1,7 +1,7 @@
 % game board size: 24x24
 % top left = (0,0)
 
-% rooms with boundries (name, topleft-x,y, bottomright-x,y) 
+/* rooms with boundries (name, topleft-x,y, bottomright-x,y) */
 room(kitchen, (0,0), (5,5)).
 room(ballroom, (8,0), (15,6)).
 room(conservatory, (18,0), (23,4)).
@@ -13,7 +13,7 @@ room(lounge, (0,18), (6,23)).
 room(hall, (9,17), (14,23)).
 room(center, (10,9), (14, 15)).
 
-% room entrances- x,y coordinates
+/* room entrances- x,y coordinates */
 entrance(kitchen, (4, 5)).
 entrance(ballroom, (8, 4)).
 entrance(ballroom, (9, 6)).
@@ -33,21 +33,23 @@ entrance(dining_room, (6, 9)).
 entrance(dining_room, (7, 12)).
 
 
-% secret paths
+/* secret paths */
 passage(kitchen, study).
 passage(study, kitchen).
 passage(conservatory, lounge).
 passage(lounge, conservatory).
 
-% characters
-character(miss_scarlett).
-character(colonel_mustard).
-character(mrs_white).
-character(reverend_green).
-character(mrs_peacock).
-character(professor_plum).
+/* characters with starting position */
+% dynamic as position can change
+:- dynamic character/2.
+character(miss_scarlett, (7,23)).
+character(colonel_mustard, (0,16)).
+character(mrs_white, (7,0)).
+character(reverend_green, (16, 0)).
+character(mrs_peacock, (23, 5)).
+character(professor_plum, (23, 18)).
 
-% weapons
+/* weapons */
 weapon(candlestick).
 weapon(dagger).
 weapon(lead_pipe).
@@ -55,7 +57,7 @@ weapon(revolver).
 weapon(rope).
 weapon(wrench).
 
-% print board
+/* print board */
 % make sure position is within 24x24 play space
 valid_position((X, Y)) :- X >= 0, Y =< 23, Y >= 0, X =< 23.
 
@@ -66,27 +68,34 @@ in_room(Pos, Room) :-
   X >= X1, X =< X2,
   Y >= Y1, Y =< Y2.
 
-% hallway position if is a valid position and not in a room
-is_hallway(Pos) :- valid_position(Pos), \+ in_room(Pos, _).
+% hallway position if is a valid position and not in a room and not a character
+is_hallway(Pos) :- valid_position(Pos), \+ in_room(Pos, _), \+ is_character(Pos, _).
 
 is_entrace(Pos) :- entrance(_, Pos).
+
+is_character(Pos, Character) :- character(Character, Pos).
 
 % given position print cell type
 print_cell(X, Y) :-
   Pos = (X, Y),
-  ( is_entrace(Pos) -> write('E ')
-  ; in_room(Pos, kitchen) -> write('K ')
-  ; in_room(Pos, ballroom) -> write('Ba')
-  ; in_room(Pos, conservatory) -> write('C ')
-  ; in_room(Pos, billiard_room) -> write('Bi')
-  ; in_room(Pos, library) -> write('Li')
-  ; in_room(Pos, study) -> write('S ')
-  ; in_room(Pos, hall) -> write('H ')
-  ; in_room(Pos, lounge) -> write('Lo')
-  ; in_room(Pos, dining_room) -> write('Di')
-  ; in_room(Pos, center) -> write('C ')
-  ; is_hallway(Pos) -> write('x ')
-  ; write('  ')
+  ( is_entrace(Pos) -> write('E  ')
+  ; in_room(Pos, kitchen) -> write('K  ')
+  ; in_room(Pos, ballroom) -> write('Ba ')
+  ; in_room(Pos, conservatory) -> write('C  ')
+  ; in_room(Pos, billiard_room) -> write('Bi ')
+  ; in_room(Pos, library) -> write('Li ')
+  ; in_room(Pos, study) -> write('S  ')
+  ; in_room(Pos, hall) -> write('H  ')
+  ; in_room(Pos, lounge) -> write('Lo ')
+  ; in_room(Pos, dining_room) -> write('Di ')
+  ; in_room(Pos, center) -> write('C  ')
+  ; is_character(Pos, miss_scarlett) -> write('MS ')
+  ; is_character(Pos, colonel_mustard) -> write('CM ')
+  ; is_character(Pos, mrs_white) -> write('MW ')
+  ; is_character(Pos, reverend_green) -> write('RG ')
+  ; is_character(Pos, mrs_peacock) -> write('MP ')
+  ; is_character(Pos, professor_plum) -> write('PP ')
+  ; is_hallway(Pos) -> write('x  ')
   ).
 
 print_row(Y) :- forall(between(0, 23, X), print_cell(X, Y)), nl.
