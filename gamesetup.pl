@@ -40,14 +40,14 @@ passage(conservatory, lounge).
 passage(lounge, conservatory).
 
 /* characters with starting position */
-% dynamic as position can change
-:- dynamic character/2.
-character(miss_scarlett, (7,23)).
-character(colonel_mustard, (0,16)).
-character(mrs_white, (7,0)).
-character(reverend_green, (16, 0)).
-character(mrs_peacock, (23, 5)).
-character(professor_plum, (23, 18)).
+% dynamic as position and assigned cards can change
+:- dynamic character/3.
+character(miss_scarlett, (7,23), []).
+character(colonel_mustard, (0,16), []).
+character(mrs_white, (7,0), []).
+character(reverend_green, (16, 0), []).
+character(mrs_peacock, (23, 5), []).
+character(professor_plum, (23, 18), []).
 
 /* weapons */
 weapon(candlestick).
@@ -56,6 +56,40 @@ weapon(lead_pipe).
 weapon(revolver).
 weapon(rope).
 weapon(wrench).
+
+/* Set winning cards and assign cards to characters */
+:- dynamic winningcards/1.
+winningcards([]).
+% get winning cards and dynamically assert
+winning_cards :-
+  random_member(X, [candlestick, dagger, lead_pipe, revolver, rope, wrench]),
+  random_member(Y, [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum]),
+  random_member(Z, [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room]),
+  retractall(winningcards(_)),
+  assert(winningcards([X,Y,Z])),
+  write('Winning cards: '), write([X,Y,Z]), nl.
+  
+% distribute cards not including cards from winning card set
+distribute_cards :-
+  Weapons = [candlestick, dagger, lead_pipe, revolver, rope, wrench],
+  Characters = [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum],
+  Rooms = [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room],
+  append([Weapons, Characters, Rooms], AllCards),
+  winningcards(WinningCards),
+  subtract(AllCards, WinningCards, RemainingCards),
+  random_permutation(RemainingCards, ShuffledCards),
+  write('Each characters cards: '), nl,
+  distribute_to_characters(ShuffledCards, Characters).
+
+% recursive function to distribute cards
+% each character gets 3 cards remaining 18, 18/6 characters = 3
+distribute_to_characters([], []).
+distribute_to_characters([C1,C2,C3|RestCards], [Char|RestChars]) :-
+    character(Char, Pos, _),
+    retract(character(Char, Pos, _)),
+    assert(character(Char, Pos, [C1,C2,C3])),
+    write(Char), write([C1,C2,C3]), nl,
+    distribute_to_characters(RestCards, RestChars).
 
 /* print board */
 % make sure position is within 24x24 play space
@@ -73,7 +107,7 @@ is_hallway(Pos) :- valid_position(Pos), \+ in_room(Pos, _), \+ is_character(Pos,
 
 is_entrace(Pos) :- entrance(_, Pos).
 
-is_character(Pos, Character) :- character(Character, Pos).
+is_character(Pos, Character) :- character(Character, Pos, _).
 
 % given position print cell type
 print_cell(X, Y) :-
