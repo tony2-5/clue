@@ -100,19 +100,20 @@ in_room(Pos, Room) :-
   room(Room, (X1, Y1), (X2, Y2)),
   Pos = (X, Y),
   X >= X1, X =< X2,
-  Y >= Y1, Y =< Y2.
+  Y >= Y1, Y =< Y2,
+  \+ is_entrance(Pos).
 
 % hallway position if is a valid position and not in a room and not a character
 is_hallway(Pos) :- valid_position(Pos), \+ in_room(Pos, _), \+ is_character(Pos, _).
 
-is_entrace(Pos) :- entrance(_, Pos).
+is_entrance(Pos) :- entrance(_, Pos).
 
 is_character(Pos, Character) :- character(Character, Pos, _).
 
 % given position print cell type
 print_cell(X, Y) :-
   Pos = (X, Y),
-  ( is_entrace(Pos) -> write('E  ')
+  ( is_entrance(Pos) -> write('E  ')
   ; in_room(Pos, kitchen) -> write('K  ')
   ; in_room(Pos, ballroom) -> write('Ba ')
   ; in_room(Pos, conservatory) -> write('C  ')
