@@ -42,12 +42,13 @@ passage(lounge, conservatory).
 /* characters with starting position */
 % dynamic as position and assigned cards can change
 :- dynamic character/3.
-character(miss_scarlett, (7,23), []).
-character(colonel_mustard, (0,16), []).
-character(mrs_white, (7,0), []).
-character(reverend_green, (16, 0), []).
-character(mrs_peacock, (23, 5), []).
-character(professor_plum, (23, 18), []).
+init_chars :-
+  assert(character(miss_scarlett, (7,23), [])),
+  assert(character(colonel_mustard, (0,16), [])),
+  assert(character(mrs_white, (7,0), [])),
+  assert(character(reverend_green, (16, 0), [])),
+  assert(character(mrs_peacock, (23, 5), [])),
+  assert(character(professor_plum, (23, 18), [])).
 
 /* weapons */
 weapon(candlestick).
@@ -65,7 +66,6 @@ winning_cards :-
   random_member(X, [candlestick, dagger, lead_pipe, revolver, rope, wrench]),
   random_member(Y, [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum]),
   random_member(Z, [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room]),
-  retractall(winningcards(_)),
   assert(winningcards([X,Y,Z])),
   write('Winning cards: '), write([X,Y,Z]), nl.
   
@@ -93,7 +93,9 @@ distribute_to_characters([C1,C2,C3|RestCards], [Char|RestChars]) :-
 
 /* print board */
 % make sure position is within 24x24 play space
-valid_position((X, Y)) :- X >= 0, Y =< 23, Y >= 0, X =< 23.
+valid_position(Pos) :- 
+  (X, Y) = Pos,
+  X >= 0, Y =< 23, Y >= 0, X =< 23.
 
 % determine if current position in room
 in_room(Pos, Room) :-
@@ -135,3 +137,9 @@ print_cell(X, Y) :-
 
 print_row(Y) :- forall(between(0, 23, X), print_cell(X, Y)), nl.
 print_board :- forall(between(0, 23, Y), print_row(Y)).
+
+% cleanup for all dynamic variables
+cleanup :-
+  retractall(winningcards(_)),
+  retractall(character(_,_,_)),
+  retractall(game_state(_)).
