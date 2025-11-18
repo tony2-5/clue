@@ -81,58 +81,76 @@ select_exit(AvailableExits, SelectedExit) :-
 move(0,Character,Pos) :-
   % checking is entrance in case entered entrance on last available move
   is_entrance(Pos) ->
-  entrance(Room, Pos),
-  get_room_center(Room, Center),
-  Center = (XC, YC),
-  move_char(Character, XC, YC), 
-  suggestion(Character, Room), nl
+    entrance(Room, Pos),
+    get_room_center(Room, Center),
+    Center = (XC, YC),
+    move_char(Character, XC, YC), 
+    suggestion(Character, Room), nl
   ;
-  write('Moves complete'), nl,
-  write('--------------------------'), nl.
+    write('Moves complete'), nl,
+    write('--------------------------'), nl.
 move(Moves, Character, Pos) :-
   Pos = (X, Y),
   write('Moves left: '), write(Moves), nl,
   (
     % checking if already in room
     in_room(Pos, Room) ->
-    % TODO: give option to make suggestion or leave room
-    % TODO: take secret passage
-    findall(EPos, exit(Room, EPos), ExitPos),
-    write('Choose an exit by entering the number: '), nl,
-    display_exits(ExitPos, 1),
-    select_exit(ExitPos, SelectedExit),
-    SelectedExit = (XE, YE),
-    NewMoves is Moves - 1,
-    move_char(Character, XE, YE),
-    move(NewMoves, Character, (XE, YE))
+      write('Enter 1 to make a suggestion.'), nl,
+      write('Enter 2 to exit the room.'), nl,
+      (passage(Room, PassageRoom) ->
+          write('Enter 3 to take secret passage to '), write(PassageRoom), nl
+        ;
+          true
+      ),
+      read(Option),
+      (Option = 1 ->
+        suggestion(Character, Room), nl
+      ; Option = 2 ->
+        findall(EPos, exit(Room, EPos), ExitPos),
+        write('Choose an exit by entering the number: '), nl,
+        display_exits(ExitPos, 1),
+        select_exit(ExitPos, SelectedExit),
+        SelectedExit = (XE, YE),
+        NewMoves is Moves - 1,
+        move_char(Character, XE, YE),
+        move(NewMoves, Character, (XE, YE))
+      ; Option = 3, passage(Room, PassageRoom) ->
+        get_room_center(PassageRoom, Center),
+        Center = (XC, YC),
+        move_char(Character, XC, YC),
+        move(Moves, Character, (XC, YC))
+      ;
+        write('Invalid option!'), nl,
+        move(Moves, Character, Pos)
+      )
     ;
-    % check if moved into entrance
-    is_entrance(Pos) ->
-    entrance(RoomEntered, Pos),
-    get_room_center(RoomEntered, Center),
-    Center = (XC, YC),
-    move_char(Character, XC, YC), 
-    suggestion(Character, RoomEntered), nl, !
+      % check if moved into entrance
+      is_entrance(Pos) ->
+      entrance(RoomEntered, Pos),
+      get_room_center(RoomEntered, Center),
+      Center = (XC, YC),
+      move_char(Character, XC, YC), 
+      suggestion(Character, RoomEntered), nl, !
     ; 
-    NewMoves is Moves-1,
-    write('Choose direction (l/r/u/d): '), read(Direction),
-    ( Direction = l, X1 is X - 1, valid_move(X1, Y) ->
-      write(X1),
-      move_char(Character, X1, Y),
-      move(NewMoves, Character, (X1, Y))
-    ; Direction = r, X1 is X + 1, valid_move(X1, Y) ->
-      move_char(Character, X1, Y),
-      move(NewMoves, Character, (X1, Y))
-    ; Direction = d, Y1 is Y + 1, valid_move(X, Y1) ->
-      move_char(Character, X, Y1),
-      move(NewMoves, Character, (X, Y1))
-    ; Direction = u, Y1 is Y - 1, valid_move(X, Y1) ->
-      move_char(Character, X, Y1),
-      move(NewMoves, Character, (X, Y1))
-    ;
-      write('Invalid move! Try again.'), nl,
-      move(Moves, Character, (X, Y)) 
-    )
+      NewMoves is Moves-1,
+      write('Choose direction (l/r/u/d): '), read(Direction),
+      ( Direction = l, X1 is X - 1, valid_move(X1, Y) ->
+        write(X1),
+        move_char(Character, X1, Y),
+        move(NewMoves, Character, (X1, Y))
+      ; Direction = r, X1 is X + 1, valid_move(X1, Y) ->
+        move_char(Character, X1, Y),
+        move(NewMoves, Character, (X1, Y))
+      ; Direction = d, Y1 is Y + 1, valid_move(X, Y1) ->
+        move_char(Character, X, Y1),
+        move(NewMoves, Character, (X, Y1))
+      ; Direction = u, Y1 is Y - 1, valid_move(X, Y1) ->
+        move_char(Character, X, Y1),
+        move(NewMoves, Character, (X, Y1))
+      ;
+        write('Invalid move! Try again.'), nl,
+        move(Moves, Character, (X, Y)) 
+      )
     ).
 
 % main game loop
