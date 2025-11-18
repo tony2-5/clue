@@ -11,9 +11,9 @@ setup_game :-
   assert(game_state(running)),
   game_loop.
 
-% Two die rolls between 1 and 12
+% Two die rolls between 2 and 12
 roll_dice(Moves) :-
-  random_between(1, 12, Moves).
+  random_between(2, 12, Moves).
 
 play_round :-
   write('--------------------------'), nl,
@@ -50,16 +50,69 @@ move_char(Character, X, Y) :-
   assert(character(Character, NewPos, Cards)),
   print_board.
 
+/* move character to room */
+get_room_center(Room, Center) :-
+    room(Room, (X1, Y1), (X2, Y2)),
+    X is (X1 + X2) // 2,
+    Y is (Y1 + Y2) // 2,
+    Center = (X, Y).
+
+/* exit logic */
+% display available exits
+display_exits([], _).
+display_exits([Pos|Rest], N) :-
+  write(N), write('. '), write(Pos), nl,
+  N1 is N + 1,
+  display_exits(Rest, N1).
+% exiting
+select_exit(AvailableExits, SelectedExit) :-
+  length(AvailableExits, NumExits),
+  write('Enter exit number (e.g. 1): '), nl,
+  read(ExitNum),
+  (integer(ExitNum), ExitNum > 0, ExitNum =< NumExits ->
+    nth1(ExitNum, AvailableExits, SelectedExit)
+    ;
+    write('Invalid number! Try again.'), nl,
+    select_exit(AvailableExits, SelectedExit)
+  ).
+
+
 % recursive moving until runs out of moves
-move(0,_,_) :-
+move(0,Character,Pos) :-
+  % checking is entrance in case entered entrance on last available move
+  is_entrance(Pos) ->
+  entrance(Room, Pos),
+  get_room_center(Room, Center),
+  Center = (XC, YC),
+  move_char(Character, XC, YC), 
+  suggestion(Character, Room), nl
+  ;
   write('Moves complete'), nl,
   write('--------------------------'), nl.
 move(Moves, Character, Pos) :-
   Pos = (X, Y),
   write('Moves left: '), write(Moves), nl,
   (
-    %TODO: end moves when got to entrance, suggestion feature
-    is_entrance(Pos) -> suggestion(Character), nl
+    % checking if already in room
+    in_room(Pos, Room) ->
+    % TODO: give option to make suggestion or leave room
+    % TODO: take secret passage
+    findall(EPos, exit(Room, EPos), ExitPos),
+    write('Choose an exit by entering the number: '), nl,
+    display_exits(ExitPos, 1),
+    select_exit(ExitPos, SelectedExit),
+    SelectedExit = (XE, YE),
+    NewMoves is Moves - 1,
+    move_char(Character, XE, YE),
+    move(NewMoves, Character, (XE, YE))
+    ;
+    % check if moved into entrance
+    is_entrance(Pos) ->
+    entrance(RoomEntered, Pos),
+    get_room_center(RoomEntered, Center),
+    Center = (XC, YC),
+    move_char(Character, XC, YC), 
+    suggestion(Character, RoomEntered), nl, !
     ; 
     NewMoves is Moves-1,
     write('Choose direction (l/r/u/d): '), read(Direction),
@@ -101,21 +154,24 @@ validate_guess(ValidGuess, Prompt, Card) :-
   write('Invalid guess!'), nl,
   validate_guess(ValidGuess, Prompt, Card).
 
-suggestion(CurrChar) :-
+suggestion(CurrChar, Room) :-
   character(CurrChar, Pos, CharCards),
   subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
   subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
-  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room], CharCards, GuessableRooms),
   write('Your current cards: '), write(CharCards), nl,
   write('Enter your suggestion: '), nl,
   write('Weapons you can guess: '), write(GuessableWeapons), nl,
   validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
   write('Characters you can guess: '), write(GuessableChars), nl,
   validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
-  write('Rooms you can guess: '), write(GuessableRooms), nl, 
-  validate_guess(GuessableRooms, 'Which room was the crime committed?: ', Room), nl,
+  write('Current room: '), write(Room), nl,
+  get_room_center(Room, Center),
+  Pos = (X, Y), % getting CurrChar pos, which is already center
+  XC is X-1, % putting guessed character in room next to guesser
+  move_char(Character, XC, Y), 
   % our version gets random card from the three cards guessed not in winning pile
   winningcards(WinningCards),
+  % using room currently entered for suggestion
   subtract([Weapon, Character, Room], WinningCards, RemainingCards),
   subtract(RemainingCards, CharCards, RemainingCards2),
   (
@@ -131,18 +187,16 @@ suggestion(CurrChar) :-
   ).
 
 % Win check
-guess(CurrChar) :-
+guess(Room) :-
   % let player know cards left that were not marked
   subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
   subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
-  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room], CharCards, GuessableRooms),
   write('Weapons you can guess: '), write(GuessableWeapons), nl,
   validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
   write('Characters you can guess: '), write(GuessableChars), nl,
   validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
-  write('Rooms you can guess: '), write(GuessableRooms), nl, 
-  validate_guess(GuessableRooms, 'Which room was the crime committed?: ', Room), nl,
   winningcards(WinningCards),
+  % using room currently entered for guess
   [Weapon, Character, Room] = WinningCards.
 
   

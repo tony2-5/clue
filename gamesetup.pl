@@ -29,9 +29,27 @@ entrance(hall, (14, 19)).
 entrance(hall, (12, 17)).
 entrance(hall, (11, 17)).
 entrance(lounge, (6, 18)).
-entrance(dining_room, (6, 9)).
+entrance(dining_room, (6, 8)).
 entrance(dining_room, (7, 12)).
 
+/* Exits for leaving room */
+exit(kitchen, (4, 6)).
+exit(ballroom, (7, 4)).
+exit(ballroom, (9, 7)).
+exit(ballroom, (14, 7)).
+exit(ballroom, (16, 4)).
+exit(conservatory, (17, 4)).
+exit(billiard_room, (17, 8)).
+exit(billiard_room, (22, 12)).
+exit(library, (16, 15)).
+exit(library, (20, 14)).
+exit(study, (17, 19)).
+exit(hall, (15, 19)).
+exit(hall, (12, 16)).
+exit(hall, (11, 16)).
+exit(lounge, (6, 17)).
+exit(dining_room, (6, 7)).
+exit(dining_room, (8, 12)).
 
 /* secret paths */
 passage(kitchen, study).
@@ -66,8 +84,8 @@ winning_cards :-
   random_member(X, [candlestick, dagger, lead_pipe, revolver, rope, wrench]),
   random_member(Y, [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum]),
   random_member(Z, [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room]),
-  assert(winningcards([X,Y,Z])),
-  write('Winning cards: '), write([X,Y,Z]), nl.
+  assert(winningcards([X,Y,Z])).
+  % write('Winning cards: '), write([X,Y,Z]), nl. display winning cards at game start
   
 % distribute cards not including cards from winning card set
 distribute_cards :-
@@ -88,7 +106,7 @@ distribute_to_characters([C1,C2,C3|RestCards], [Char|RestChars]) :-
     character(Char, Pos, _),
     retract(character(Char, Pos, _)),
     assert(character(Char, Pos, [C1,C2,C3])),
-    write(Char), write([C1,C2,C3]), nl,
+    % write(Char), write([C1,C2,C3]), nl, to see which cards each player has at game start
     distribute_to_characters(RestCards, RestChars).
 
 /* print board */
@@ -116,6 +134,12 @@ is_character(Pos, Character) :- character(Character, Pos, _).
 print_cell(X, Y) :-
   Pos = (X, Y),
   ( is_entrance(Pos) -> write('E  ')
+  ; is_character(Pos, miss_scarlett) -> write('MS ')
+  ; is_character(Pos, colonel_mustard) -> write('CM ')
+  ; is_character(Pos, mrs_white) -> write('MW ')
+  ; is_character(Pos, reverend_green) -> write('RG ')
+  ; is_character(Pos, mrs_peacock) -> write('MP ')
+  ; is_character(Pos, professor_plum) -> write('PP ')
   ; in_room(Pos, kitchen) -> write('K  ')
   ; in_room(Pos, ballroom) -> write('Ba ')
   ; in_room(Pos, conservatory) -> write('C  ')
@@ -126,12 +150,6 @@ print_cell(X, Y) :-
   ; in_room(Pos, lounge) -> write('Lo ')
   ; in_room(Pos, dining_room) -> write('Di ')
   ; in_room(Pos, center) -> write('C  ')
-  ; is_character(Pos, miss_scarlett) -> write('MS ')
-  ; is_character(Pos, colonel_mustard) -> write('CM ')
-  ; is_character(Pos, mrs_white) -> write('MW ')
-  ; is_character(Pos, reverend_green) -> write('RG ')
-  ; is_character(Pos, mrs_peacock) -> write('MP ')
-  ; is_character(Pos, professor_plum) -> write('PP ')
   ; is_hallway(Pos) -> write('x  ')
   ).
 
