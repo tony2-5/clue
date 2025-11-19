@@ -1,8 +1,8 @@
 :- [gamesetup].
 
-% main game loop
+/* Game initialization */
 :- dynamic game_state/1.
-setup_game :-
+start_game :-
   cleanup,
   init_chars,
   winning_cards,
@@ -10,6 +10,7 @@ setup_game :-
   assert(game_state(running)),
   game_loop.
 
+/* Turn logic */
 % Two die rolls between 2 and 12
 roll_dice(Moves) :-
   random_between(2, 12, Moves).
@@ -42,9 +43,31 @@ take_turn(CharName) :-
   write('You rolled a '), write(Moves), nl,
   move(Moves, CharName, CurrentPos).
 
+/* Movement logic */
 valid_move(X, Y) :-
   Pos = (X, Y),
   is_hallway(Pos).
+
+is_occupied(Pos) :- character(_, Pos, _).
+
+find_unoccupied_near(X, Y, NewX, NewY) :-
+  Pos = (X, Y),
+  (\+ is_occupied(Pos) ->
+    NewX = X, NewY = Y
+  ;
+    % Trying adjacent positions
+    (X1 is X - 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %left
+      NewX = X1, NewY = Y
+    ; X1 is X + 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %right
+      NewX = X1, NewY = Y
+    ; Y1 is Y - 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %up
+      NewX = X, NewY = Y1
+    ; Y1 is Y + 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %down
+      NewX = X, NewY = Y1
+    ; % fallback is allowing characters to stack
+      NewX = X, NewY = Y
+    )
+  ).
 
 % update character position
 move_char(Character, X, Y) :-
@@ -54,33 +77,6 @@ move_char(Character, X, Y) :-
   assert(character(Character, NewPos, Cards)),
   print_board.
 
-/* move character to room */
-get_room_center(Room, Center) :-
-    room(Room, (X1, Y1), (X2, Y2)),
-    X is (X1 + X2) // 2,
-    Y is (Y1 + Y2) // 2,
-    Center = (X, Y).
-
-/* exit logic */
-% display available exits
-display_exits([], _).
-display_exits([Pos|Rest], N) :-
-  write(N), write('. '), write(Pos), nl,
-  N1 is N + 1,
-  display_exits(Rest, N1).
-% exiting
-select_exit(AvailableExits, SelectedExit) :-
-  length(AvailableExits, NumExits),
-  write('Enter exit number (e.g. 1): '), nl,
-  read(ExitNum),
-  (integer(ExitNum), ExitNum > 0, ExitNum =< NumExits ->
-    nth1(ExitNum, AvailableExits, SelectedExit)
-    ;
-    write('Invalid number! Try again.'), nl,
-    select_exit(AvailableExits, SelectedExit)
-  ).
-
-
 % recursive moving until runs out of moves
 move(0,Character,Pos) :-
   % checking is entrance in case entered entrance on last available move
@@ -88,7 +84,8 @@ move(0,Character,Pos) :-
     entrance(Room, Pos),
     get_room_center(Room, Center),
     Center = (XC, YC),
-    move_char(Character, XC, YC), 
+    find_unoccupied_near(XC, YC, NXC, NYC),
+    move_char(Character, NXC, NYC), 
     suggestion(Character, Room), nl
   ;
     write('Moves complete'), nl,
@@ -122,7 +119,8 @@ move(Moves, Character, Pos) :-
       ; Option = 3, passage(Room, PassageRoom) ->
         get_room_center(PassageRoom, Center),
         Center = (XC, YC),
-        move_char(Character, XC, YC),
+        find_unoccupied_near(XC, YC, NXC, NYC),
+        move_char(Character, NXC, NYC), 
         move(Moves, Character, (XC, YC))
       ;
         write('Invalid option!'), nl,
@@ -134,7 +132,8 @@ move(Moves, Character, Pos) :-
       entrance(RoomEntered, Pos),
       get_room_center(RoomEntered, Center),
       Center = (XC, YC),
-      move_char(Character, XC, YC), 
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(Character, NXC, NYC), 
       suggestion(Character, RoomEntered), nl,
       guess(Character, RoomEntered), !
     ; 
@@ -159,15 +158,33 @@ move(Moves, Character, Pos) :-
       )
     ).
 
-% main game loop
-game_loop :-
-  game_state(finished),
-  write('Game over!'), nl.
-game_loop :-
-  game_state(running),
-  play_round,
-  game_loop.
+% move character to room
+get_room_center(Room, Center) :-
+  room(Room, (X1, Y1), (X2, Y2)),
+  X is (X1 + X2) // 2,
+  Y is (Y1 + Y2) // 2,
+  Center = (X, Y).
 
+/* exit logic */
+% display available exits
+display_exits([], _).
+display_exits([Pos|Rest], N) :-
+  write(N), write('. '), write(Pos), nl,
+  N1 is N + 1,
+  display_exits(Rest, N1).
+% exiting
+select_exit(AvailableExits, SelectedExit) :-
+  length(AvailableExits, NumExits),
+  write('Enter exit number (e.g. 1): '), nl,
+  read(ExitNum),
+  (integer(ExitNum), ExitNum > 0, ExitNum =< NumExits ->
+    nth1(ExitNum, AvailableExits, SelectedExit)
+    ;
+    write('Invalid number! Try again.'), nl,
+    select_exit(AvailableExits, SelectedExit)
+  ).
+
+/* guess/suggest logic */
 validate_guess(ValidGuess, Prompt, Card) :-
   write(Prompt), read(Guess), nl,
   member(Guess, ValidGuess) -> 
@@ -190,10 +207,9 @@ suggestion(CurrChar, Room) :-
   % Move guessed character if they exist
   (character(Character, _, _) ->
       get_room_center(Room, Center),
-      Pos = (X, Y), % getting CurrChar pos, which is already center
-      XC is X-1, % putting guessed character in room next to guesser
-      %TODO check if putting guessed character in room next to guesser is still in bounds
-      move_char(Character, XC, Y)
+      Center = (XC, YC),
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(Character, NXC, NYC)
     ;
       true
   ),
@@ -228,6 +244,15 @@ guess(CurrChar, Room) :-
     validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
     write('Characters you can guess: '), write(GuessableChars), nl,
     validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
+    % Move guessed character if they exist
+    (character(Character, _, _) ->
+      get_room_center(Room, Center),
+      Center = (XC, YC),
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(Character, NXC, NYC)
+    ;
+      true
+    ),
     winningcards(WinningCards),
     % using room currently entered for guess
     (WinningCards = [Weapon, Character, Room] ->
@@ -246,4 +271,11 @@ guess(CurrChar, Room) :-
     guess(CurrChar, Room)
   ).
 
-  
+/* main game loop */
+game_loop :-
+  game_state(finished),
+  write('Game over!'), nl.
+game_loop :-
+  game_state(running),
+  play_round,
+  game_loop.

@@ -76,7 +76,7 @@ weapon(revolver).
 weapon(rope).
 weapon(wrench).
 
-/* Set winning cards and assign cards to characters */
+/* Set winning cards/card distribution */
 :- dynamic winningcards/1.
 winningcards([]).
 % get winning cards and dynamically assert
@@ -156,7 +156,7 @@ print_cell(X, Y) :-
 print_row(Y) :- forall(between(0, 23, X), print_cell(X, Y)), nl.
 print_board :- forall(between(0, 23, Y), print_row(Y)).
 
-% cleanup for all dynamic variables
+/* cleanup for all dynamic variables */
 cleanup :-
   retractall(winningcards(_)),
   retractall(character(_,_,_)),
