@@ -5,7 +5,6 @@
 setup_game :-
   cleanup,
   init_chars,
-  print_board,
   winning_cards,
   distribute_cards,
   assert(game_state(running)),
@@ -25,10 +24,15 @@ play_round :-
 % moving turn for each character
 play_turns([]).
 play_turns([Char|Rest]) :-
+  (game_state(finished) ->
+    write('Game has ended!'), nl, !
+  ;
     take_turn(Char),
-    play_turns(Rest).
+    play_turns(Rest)
+  ).
 
 take_turn(CharName) :-
+  print_board,
   write('--------------------------'), nl,
   write('Character: '), write(CharName), nl,
   character(CharName, CurrentPos, _),
@@ -104,7 +108,8 @@ move(Moves, Character, Pos) :-
       ),
       read(Option),
       (Option = 1 ->
-        suggestion(Character, Room), nl
+        suggestion(Character, Room), nl,
+        guess(Character, Room), !
       ; Option = 2 ->
         findall(EPos, exit(Room, EPos), ExitPos),
         write('Choose an exit by entering the number: '), nl,
@@ -124,13 +129,14 @@ move(Moves, Character, Pos) :-
         move(Moves, Character, Pos)
       )
     ;
-      % check if moved into entrance
-      is_entrance(Pos) ->
+    % check if moved into entrance
+    is_entrance(Pos) ->
       entrance(RoomEntered, Pos),
       get_room_center(RoomEntered, Center),
       Center = (XC, YC),
       move_char(Character, XC, YC), 
-      suggestion(Character, RoomEntered), nl, !
+      suggestion(Character, RoomEntered), nl,
+      guess(Character, RoomEntered), !
     ; 
       NewMoves is Moves-1,
       write('Choose direction (l/r/u/d): '), read(Direction),
@@ -159,18 +165,16 @@ game_loop :-
   write('Game over!'), nl.
 game_loop :-
   game_state(running),
-  play_round.
-  %guess -> retract(game_state(running)), assert(game_state(finished))
-  %; (write('incorrect guess'), nl),
-  % game_loop.
+  play_round,
+  game_loop.
 
 validate_guess(ValidGuess, Prompt, Card) :-
   write(Prompt), read(Guess), nl,
   member(Guess, ValidGuess) -> 
-  Card = Guess
+    Card = Guess
   ;
-  write('Invalid guess!'), nl,
-  validate_guess(ValidGuess, Prompt, Card).
+    write('Invalid guess!'), nl,
+    validate_guess(ValidGuess, Prompt, Card).
 
 suggestion(CurrChar, Room) :-
   character(CurrChar, Pos, CharCards),
@@ -183,38 +187,63 @@ suggestion(CurrChar, Room) :-
   write('Characters you can guess: '), write(GuessableChars), nl,
   validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
   write('Current room: '), write(Room), nl,
-  get_room_center(Room, Center),
-  Pos = (X, Y), % getting CurrChar pos, which is already center
-  XC is X-1, % putting guessed character in room next to guesser
-  move_char(Character, XC, Y), 
+  % Move guessed character if they exist
+  (character(Character, _, _) ->
+      get_room_center(Room, Center),
+      Pos = (X, Y), % getting CurrChar pos, which is already center
+      XC is X-1, % putting guessed character in room next to guesser
+      %TODO check if putting guessed character in room next to guesser is still in bounds
+      move_char(Character, XC, Y)
+    ;
+      true
+  ),
   % our version gets random card from the three cards guessed not in winning pile
   winningcards(WinningCards),
   % using room currently entered for suggestion
   subtract([Weapon, Character, Room], WinningCards, RemainingCards),
   subtract(RemainingCards, CharCards, RemainingCards2),
   (
-  RemainingCards2 = [] ->
-  write('No one has cards from your suggestion.'), nl
+    RemainingCards2 = [] ->
+    write('No one has cards from your suggestion.'), nl
   ;
-  random_permutation(RemainingCards2, ShuffledRemaining),
-  ShuffledRemaining = [RandomCard|_],
-  write('Another player shows you: '), write(RandomCard), nl,
-  append(CharCards, RandomCard, NewCharCards),
-  retract(character(CurrChar, Pos, CharCards)),
-  assert(character(CurrChar, Pos, NewCharCards))
+    random_permutation(RemainingCards2, ShuffledRemaining),
+    ShuffledRemaining = [RandomCard|_],
+    write('Another player shows you: '), write(RandomCard), nl,
+    character(CurrChar, UpdatedPos, _), % need to refetch pos in case character moved
+    append(CharCards, [RandomCard], NewCharCards),
+    retract(character(CurrChar, UpdatedPos, CharCards)),
+    assert(character(CurrChar, UpdatedPos, NewCharCards))
   ).
 
-% Win check
-guess(Room) :-
-  % let player know cards left that were not marked
-  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
-  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
-  write('Weapons you can guess: '), write(GuessableWeapons), nl,
-  validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
-  write('Characters you can guess: '), write(GuessableChars), nl,
-  validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
-  winningcards(WinningCards),
-  % using room currently entered for guess
-  [Weapon, Character, Room] = WinningCards.
+/* Win check */
+guess(CurrChar, Room) :-
+  write('Would you like to guess? (y/n)'), nl,
+  read(Input),
+  (Input = y ->
+    character(CurrChar, CurrPos, CharCards),
+    % let player know cards left that were not marked
+    subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
+    subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
+    write('Weapons you can guess: '), write(GuessableWeapons), nl,
+    validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
+    write('Characters you can guess: '), write(GuessableChars), nl,
+    validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
+    winningcards(WinningCards),
+    % using room currently entered for guess
+    (WinningCards = [Weapon, Character, Room] ->
+      write('Correct! '), write(CurrChar), write(' wins!'), nl,
+      retract(game_state(running)),
+      assert(game_state(finished))
+    ;
+      write('Incorrect Guess!'), nl,
+      write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
+      retract(character(CurrChar, CurrPos, CharCards)) 
+    )
+  ; Input = n -> 
+    true
+  ;
+    write('Incorrect input!'), nl,
+    guess(CurrChar, Room)
+  ).
 
   
