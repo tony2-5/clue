@@ -10,4 +10,4 @@
 1. Within the github repository clue directory start the Prolog REPL environment using: `swipl`
 2. In the swipl environment run: `[main].` to initialize the Prolog project.
 3. Now simply start the game with the command: `start_game.`
-**Note:** All read user input during gameplay must be ended with a `.`, e.g. Who commited the crime?: `mrs_white.`
+* **Note:** All read user input during gameplay must be ended with a `.`, e.g. Who commited the crime?: `mrs_white.`
