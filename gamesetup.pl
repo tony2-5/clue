@@ -29,9 +29,27 @@ entrance(hall, (14, 19)).
 entrance(hall, (12, 17)).
 entrance(hall, (11, 17)).
 entrance(lounge, (6, 18)).
-entrance(dining_room, (6, 9)).
+entrance(dining_room, (6, 8)).
 entrance(dining_room, (7, 12)).
 
+/* Exits for leaving room */
+exit(kitchen, (4, 6)).
+exit(ballroom, (7, 4)).
+exit(ballroom, (9, 7)).
+exit(ballroom, (14, 7)).
+exit(ballroom, (16, 4)).
+exit(conservatory, (17, 4)).
+exit(billiard_room, (17, 8)).
+exit(billiard_room, (22, 12)).
+exit(library, (16, 15)).
+exit(library, (20, 14)).
+exit(study, (17, 19)).
+exit(hall, (15, 19)).
+exit(hall, (12, 16)).
+exit(hall, (11, 16)).
+exit(lounge, (6, 17)).
+exit(dining_room, (6, 7)).
+exit(dining_room, (8, 12)).
 
 /* secret paths */
 passage(kitchen, study).
@@ -42,12 +60,13 @@ passage(lounge, conservatory).
 /* characters with starting position */
 % dynamic as position and assigned cards can change
 :- dynamic character/3.
-character(miss_scarlett, (7,23), []).
-character(colonel_mustard, (0,16), []).
-character(mrs_white, (7,0), []).
-character(reverend_green, (16, 0), []).
-character(mrs_peacock, (23, 5), []).
-character(professor_plum, (23, 18), []).
+init_chars :-
+  assert(character(miss_scarlett, (7,23), [])),
+  assert(character(colonel_mustard, (0,16), [])),
+  assert(character(mrs_white, (7,0), [])),
+  assert(character(reverend_green, (16, 0), [])),
+  assert(character(mrs_peacock, (23, 5), [])),
+  assert(character(professor_plum, (23, 18), [])).
 
 /* weapons */
 weapon(candlestick).
@@ -57,7 +76,7 @@ weapon(revolver).
 weapon(rope).
 weapon(wrench).
 
-/* Set winning cards and assign cards to characters */
+/* Set winning cards/card distribution */
 :- dynamic winningcards/1.
 winningcards([]).
 % get winning cards and dynamically assert
@@ -65,9 +84,8 @@ winning_cards :-
   random_member(X, [candlestick, dagger, lead_pipe, revolver, rope, wrench]),
   random_member(Y, [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum]),
   random_member(Z, [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room]),
-  retractall(winningcards(_)),
-  assert(winningcards([X,Y,Z])),
-  write('Winning cards: '), write([X,Y,Z]), nl.
+  assert(winningcards([X,Y,Z])).
+  % write('Winning cards: '), write([X,Y,Z]), nl. display winning cards at game start
   
 % distribute cards not including cards from winning card set
 distribute_cards :-
@@ -88,31 +106,40 @@ distribute_to_characters([C1,C2,C3|RestCards], [Char|RestChars]) :-
     character(Char, Pos, _),
     retract(character(Char, Pos, _)),
     assert(character(Char, Pos, [C1,C2,C3])),
-    write(Char), write([C1,C2,C3]), nl,
+    % write(Char), write([C1,C2,C3]), nl, to see which cards each player has at game start
     distribute_to_characters(RestCards, RestChars).
 
 /* print board */
 % make sure position is within 24x24 play space
-valid_position((X, Y)) :- X >= 0, Y =< 23, Y >= 0, X =< 23.
+valid_position(Pos) :- 
+  (X, Y) = Pos,
+  X >= 0, Y =< 23, Y >= 0, X =< 23.
 
 % determine if current position in room
 in_room(Pos, Room) :-
   room(Room, (X1, Y1), (X2, Y2)),
   Pos = (X, Y),
   X >= X1, X =< X2,
-  Y >= Y1, Y =< Y2.
+  Y >= Y1, Y =< Y2,
+  \+ is_entrance(Pos).
 
 % hallway position if is a valid position and not in a room and not a character
 is_hallway(Pos) :- valid_position(Pos), \+ in_room(Pos, _), \+ is_character(Pos, _).
 
-is_entrace(Pos) :- entrance(_, Pos).
+is_entrance(Pos) :- entrance(_, Pos).
 
 is_character(Pos, Character) :- character(Character, Pos, _).
 
 % given position print cell type
 print_cell(X, Y) :-
   Pos = (X, Y),
-  ( is_entrace(Pos) -> write('E  ')
+  ( is_entrance(Pos) -> write('E  ')
+  ; is_character(Pos, miss_scarlett) -> write('MS ')
+  ; is_character(Pos, colonel_mustard) -> write('CM ')
+  ; is_character(Pos, mrs_white) -> write('MW ')
+  ; is_character(Pos, reverend_green) -> write('RG ')
+  ; is_character(Pos, mrs_peacock) -> write('MP ')
+  ; is_character(Pos, professor_plum) -> write('PP ')
   ; in_room(Pos, kitchen) -> write('K  ')
   ; in_room(Pos, ballroom) -> write('Ba ')
   ; in_room(Pos, conservatory) -> write('C  ')
@@ -123,14 +150,14 @@ print_cell(X, Y) :-
   ; in_room(Pos, lounge) -> write('Lo ')
   ; in_room(Pos, dining_room) -> write('Di ')
   ; in_room(Pos, center) -> write('C  ')
-  ; is_character(Pos, miss_scarlett) -> write('MS ')
-  ; is_character(Pos, colonel_mustard) -> write('CM ')
-  ; is_character(Pos, mrs_white) -> write('MW ')
-  ; is_character(Pos, reverend_green) -> write('RG ')
-  ; is_character(Pos, mrs_peacock) -> write('MP ')
-  ; is_character(Pos, professor_plum) -> write('PP ')
   ; is_hallway(Pos) -> write('x  ')
   ).
 
 print_row(Y) :- forall(between(0, 23, X), print_cell(X, Y)), nl.
 print_board :- forall(between(0, 23, Y), print_row(Y)).
+
+/* cleanup for all dynamic variables */
+cleanup :-
+  retractall(winningcards(_)),
+  retractall(character(_,_,_)),
+  retractall(game_state(_)).
