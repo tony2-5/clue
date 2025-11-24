@@ -1,4 +1,5 @@
 :- [gamesetup].
+:- [agent].
 
 /* Game initialization */
 :- dynamic game_state/1.
@@ -7,6 +8,7 @@ start_game :-
   init_chars,
   winning_cards,
   distribute_cards,
+  agent_setup,
   assert(game_state(running)),
   game_loop.
 
