@@ -43,7 +43,11 @@ take_turn(CharName) :-
   
   roll_dice(Moves),
   write('You rolled a '), write(Moves), nl,
-  move(Moves, CharName, CurrentPos).
+  (agent(CharName) ->
+    ai_move(Moves, CharName, CurrentPos)
+  ;
+    move(Moves, CharName, CurrentPos)
+  ).
 
 /* Movement logic */
 valid_move(X, Y) :-
