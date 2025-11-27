@@ -39,7 +39,7 @@ nearest_room(CharPos, ValidRooms, best_room(BestRoom, BestEntrancePos)) :-
     EntrancePos = (EX, EY),
     ManDist is abs(X-EX) + abs(Y-EY)
   ), ManhattanDistances), 
-  sort(ManhattanDistances, [distance(_, BestRoom, BestEntrancePos)|RestRooms]).
+  sort(ManhattanDistances, [distance(_, BestRoom, BestEntrancePos)|_]).
 
 % heuristic will be manhattan distance for pathing to room
 heuristic(CurrPos, EntrancePos, ManhattanDistance) :-
@@ -50,7 +50,8 @@ heuristic(CurrPos, EntrancePos, ManhattanDistance) :-
 astar(Start, Goal, Path) :-
   heuristic(Start, Goal, H),
   astar_search([[H, 0, Start, [Start]]], Goal, [], ReversePath),
-  reverse(ReversePath, Path).
+  reverse(ReversePath, FullPath),
+  subtract(FullPath, [Start], Path). % removing state agent is currently at so it doesnt use up a move
 
 astar_search([[_,_,Goal,Path]|_], Goal, _, Path). % base case, unifies goal path with final path
 astar_search([[F, G, CurrPos, Path]|RemainingNodes], Goal, Visited, FinalPath) :-
@@ -86,15 +87,5 @@ astar_search([[F, G, CurrPos, Path]|RemainingNodes], Goal, Visited, FinalPath) :
   neighbor((X, Y), (X, Y1)) :-
     Y1 is Y + 1,
     is_hallway((X, Y1)).
-
-ai_move(Moves, CharName) :-
-  character(CharName, CharPos, Cards),
-  get_rooms(Cards, ValidRooms),
-  nearest_room(CharPos, ValidRooms, best_room(BestRoom, BestEntrance)),
-  astar(CharPos, BestEntrance, Path),
-  write(Path), nl,
-  write('In progress'), nl.
-
-/* ai room decision */
 
 /* ai suggestion/guess logic */

@@ -44,7 +44,7 @@ take_turn(CharName) :-
   roll_dice(Moves),
   write('You rolled a '), write(Moves), nl,
   (agent(CharName) ->
-    ai_move(Moves, CharName, CurrentPos)
+    ai_move(Moves, CharName)
   ;
     move(Moves, CharName, CurrentPos)
   ).
@@ -54,45 +54,28 @@ valid_move(X, Y) :-
   Pos = (X, Y),
   is_hallway(Pos).
 
-is_occupied(Pos) :- character(_, Pos, _).
+% move character to room
+get_room_center(Room, Center) :-
+  room(Room, (X1, Y1), (X2, Y2)),
+  X is (X1 + X2) // 2,
+  Y is (Y1 + Y2) // 2,
+  Center = (X, Y).
 
-find_unoccupied_near(X, Y, NewX, NewY) :-
-  Pos = (X, Y),
-  (\+ is_occupied(Pos) ->
-    NewX = X, NewY = Y
-  ;
-    % Trying adjacent positions
-    (X1 is X - 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %left
-      NewX = X1, NewY = Y
-    ; X1 is X + 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %right
-      NewX = X1, NewY = Y
-    ; Y1 is Y - 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %up
-      NewX = X, NewY = Y1
-    ; Y1 is Y + 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %down
-      NewX = X, NewY = Y1
-    ; % fallback is allowing characters to stack
-      NewX = X, NewY = Y
-    )
-  ).
-
-% update character position
-move_char(Character, X, Y) :-
-  NewPos = (X, Y),
-  character(Character, OldPos, Cards),
-  retract(character(Character, OldPos, Cards)),
-  assert(character(Character, NewPos, Cards)),
-  print_board.
+center_on_enter(Character, Pos, RoomEntered) :-
+  entrance(Room, Pos),
+  RoomEntered = Room,
+  get_room_center(Room, Center),
+  Center = (XC, YC),
+  find_unoccupied_near(XC, YC, NXC, NYC),
+  move_char(Character, NXC, NYC), 
+  suggestion(Character, Room), nl.
 
 % recursive moving until runs out of moves
 move(0,Character,Pos) :-
   % checking is entrance in case entered entrance on last available move
   is_entrance(Pos) ->
-    entrance(Room, Pos),
-    get_room_center(Room, Center),
-    Center = (XC, YC),
-    find_unoccupied_near(XC, YC, NXC, NYC),
-    move_char(Character, NXC, NYC), 
-    suggestion(Character, Room), nl
+    center_on_enter(Character, Pos, RoomEntered),
+    guess(Character, RoomEntered)
   ;
     write('Moves complete'), nl,
     write('--------------------------'), nl.
@@ -132,15 +115,10 @@ move(Moves, Character, Pos) :-
         write('Invalid option!'), nl,
         move(Moves, Character, Pos)
       )
-    ;
+    ; 
     % check if moved into entrance
     is_entrance(Pos) ->
-      entrance(RoomEntered, Pos),
-      get_room_center(RoomEntered, Center),
-      Center = (XC, YC),
-      find_unoccupied_near(XC, YC, NXC, NYC),
-      move_char(Character, NXC, NYC), 
-      suggestion(Character, RoomEntered), nl,
+      center_on_enter(Character, Pos, RoomEntered),
       guess(Character, RoomEntered), !
     ; 
       NewMoves is Moves-1,
@@ -164,12 +142,56 @@ move(Moves, Character, Pos) :-
       )
     ).
 
-% move character to room
-get_room_center(Room, Center) :-
-  room(Room, (X1, Y1), (X2, Y2)),
-  X is (X1 + X2) // 2,
-  Y is (Y1 + Y2) // 2,
-  Center = (X, Y).
+% for finding unoccupied spots inside of rooms
+is_occupied(Pos) :- character(_, Pos, _).
+find_unoccupied_near(X, Y, NewX, NewY) :-
+  Pos = (X, Y),
+  (\+ is_occupied(Pos) ->
+    NewX = X, NewY = Y
+  ;
+    % Trying adjacent positions
+    (X1 is X - 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %left
+      NewX = X1, NewY = Y
+    ; X1 is X + 1, Pos1 = (X1, Y), valid_position(Pos1), \+ is_occupied(Pos1) -> %right
+      NewX = X1, NewY = Y
+    ; Y1 is Y - 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %up
+      NewX = X, NewY = Y1
+    ; Y1 is Y + 1, Pos1 = (X, Y1), valid_position(Pos1), \+ is_occupied(Pos1) -> %down
+      NewX = X, NewY = Y1
+    ; % fallback is allowing characters to stack
+      NewX = X, NewY = Y
+    )
+  ).
+
+% update character position
+move_char(Character, X, Y) :-
+  NewPos = (X, Y),
+  character(Character, OldPos, Cards),
+  retract(character(Character, OldPos, Cards)),
+  assert(character(Character, NewPos, Cards)),
+  print_board, nl.
+
+/* AI Movement */
+follow_path(0, _, _).
+follow_path(_, [], _).
+follow_path(Moves, [PathPos|RemainingPath], CharName) :-
+  PathPos = (X,Y),
+  move_char(CharName, X, Y),
+  is_entrance(PathPos) ->
+    center_on_enter(CharName, PathPos, RoomEntered),
+    guess(CharName, RoomEntered), !
+  ;
+    NewMoves is Moves-1,
+    follow_path(NewMoves, RemainingPath, CharName).
+
+ai_move(Moves, CharName) :-
+  character(CharName, CharPos, Cards),
+  get_rooms(Cards, ValidRooms),
+  nearest_room(CharPos, ValidRooms, best_room(_, BestEntrance)),
+  astar(CharPos, BestEntrance, Path),
+  write(Path), nl,
+  follow_path(Moves, Path, CharName),
+  write('In progress'), nl.
 
 /* exit logic */
 % display available exits
@@ -200,7 +222,7 @@ validate_guess(ValidGuess, Prompt, Card) :-
     validate_guess(ValidGuess, Prompt, Card).
 
 suggestion(CurrChar, Room) :-
-  character(CurrChar, Pos, CharCards),
+  character(CurrChar, _, CharCards),
   subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
   subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
   write('Your current cards: '), write(CharCards), nl,
