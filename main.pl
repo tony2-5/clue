@@ -28,14 +28,13 @@ play_round :-
 play_turns([]).
 play_turns([Char|Rest]) :-
   (game_state(finished) ->
-    write('Game has ended!'), nl, !
+    !
   ;
     take_turn(Char),
     play_turns(Rest)
   ).
 
 take_turn(CharName) :-
-  print_board,
   write('--------------------------'), nl,
   write('Character: '), write(CharName), nl,
   character(CharName, CurrentPos, _),
@@ -43,6 +42,7 @@ take_turn(CharName) :-
   
   roll_dice(Moves),
   write('You rolled a '), write(Moves), nl,
+  print_board, nl,
   (agent(CharName) ->
     ai_turn(Moves, CharName)
   ;
@@ -75,7 +75,11 @@ move_char(Character, X, Y) :-
   character(Character, OldPos, Cards),
   retract(character(Character, OldPos, Cards)),
   assert(character(Character, NewPos, Cards)),
-  print_board, nl, nl.
+  (agent(Character) ->
+    true % not printing board for agents
+  ;
+    print_board, nl, nl
+  ).
 
 % recursive moving until runs out of moves
 move(0,Character,Pos) :-
@@ -202,7 +206,7 @@ ai_turn(Moves, CharName) :-
     ; % else take exit
       write('taking exit'), nl,
       findall(EPos, exit(Room, EPos), ExitPos),
-      agent_exit(ExitPos, SelectedExit),
+      agent_exit(ExitPos, ValidRooms, SelectedExit),
       SelectedExit = (XE, YE),
       NewMoves is Moves - 1,
       move_char(CharName, XE, YE),
@@ -308,7 +312,8 @@ agent_suggest(CurrChar, Room) :-
   subtract(RemainingCards, CharCards, RemainingCards2),
   (
     RemainingCards2 = [] ->
-    write('No one has cards from your suggestion.'), nl
+    write('No one has cards from your suggestion.'), nl,
+    agent_guess(CurrChar, Room) % agent guesses once it know it will get it right
   ;
     random_permutation(RemainingCards2, ShuffledRemaining),
     ShuffledRemaining = [RandomCard|_],

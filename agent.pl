@@ -30,9 +30,18 @@ get_rooms(AgentCards, ValidRooms) :-
 
 /* ai movement logic (A* search) */
 % exit room logic
-agent_exit(AvailableExits, SelectedExit) :-
-  nth1(1, AvailableExits, SelectedExit).  % taking first exit for now
-  % TODO: implement smarter exit logic
+agent_exit(AvailableExits, ValidRooms, SelectedExit) :-
+  findall(distance(MinDist, ExitPos),
+    (
+      member(ExitPos, AvailableExits),
+      nearest_room(ExitPos, ValidRooms, best_room(_, BestEntrancePos)), % getting nearest room position from each exit
+      ExitPos = (EX, EY),
+      BestEntrancePos = (EntX, EntY),
+      MinDist is abs(EX - EntX) + abs(EY - EntY) % getting manhattan distance to each of the new room positions
+    ),
+    ExitDistances
+  ),
+  sort(ExitDistances, [distance(_, SelectedExit)|_]).  % taking exit with smallest manhattan distance to optimal room
 
 % logic for when agent will take passage
 valid_passage(CharName, CurrRoom) :-
@@ -100,27 +109,4 @@ astar_search([[F, G, CurrPos, Path]|RemainingNodes], Goal, Visited, FinalPath) :
     Y1 is Y + 1,
     is_hallway((X, Y1)).
 
-/* ai suggestion/guess logic */
-agent_guess_conditon(CharName) :-
-  character(CharName, CharPos, AgentCards),
-  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, dining_room, lounge, hall], AgentCards, RemainingRooms),
-  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], AgentCards, RemainingWeapons),
-  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], AgentCards, RemainingChars),
-  (length(RemainingRooms, 1) ->
-    in_room(CharPos, Room),
-    member(Room, RemainingRooms)
-  ;
-    false % terminate guess
-  ),
-  (length(RemainingWeapons, 1) ->
-    true
-  ;
-    false % terminate guess
-  ),
-  (length(RemainingChars, 1) ->
-    true
-  ;
-    false % terminate guess
-  ),
-  write('In progress').
 % PICK BEST EXIT
