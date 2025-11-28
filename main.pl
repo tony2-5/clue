@@ -44,7 +44,7 @@ take_turn(CharName) :-
   roll_dice(Moves),
   write('You rolled a '), write(Moves), nl,
   (agent(CharName) ->
-    ai_move(Moves, CharName)
+    ai_turn(Moves, CharName)
   ;
     move(Moves, CharName, CurrentPos)
   ).
@@ -67,14 +67,22 @@ center_on_enter(Character, Pos, RoomEntered) :-
   get_room_center(Room, Center),
   Center = (XC, YC),
   find_unoccupied_near(XC, YC, NXC, NYC),
-  move_char(Character, NXC, NYC), 
-  suggestion(Character, Room), nl.
+  move_char(Character, NXC, NYC).
+
+% update character position
+move_char(Character, X, Y) :-
+  NewPos = (X, Y),
+  character(Character, OldPos, Cards),
+  retract(character(Character, OldPos, Cards)),
+  assert(character(Character, NewPos, Cards)),
+  print_board, nl, nl.
 
 % recursive moving until runs out of moves
 move(0,Character,Pos) :-
   % checking is entrance in case entered entrance on last available move
   is_entrance(Pos) ->
     center_on_enter(Character, Pos, RoomEntered),
+    suggestion(Character, RoomEntered),
     guess(Character, RoomEntered)
   ;
     write('Moves complete'), nl,
@@ -83,64 +91,65 @@ move(Moves, Character, Pos) :-
   Pos = (X, Y),
   write('Moves left: '), write(Moves), nl,
   (
-    % checking if already in room
-    in_room(Pos, Room) ->
-      write('Enter 1 to make a suggestion.'), nl,
-      write('Enter 2 to exit the room.'), nl,
-      (passage(Room, PassageRoom) ->
-          write('Enter 3 to take secret passage to '), write(PassageRoom), nl
-        ;
-          true
-      ),
-      read(Option),
-      (Option = 1 ->
-        suggestion(Character, Room), nl,
-        guess(Character, Room), !
-      ; Option = 2 ->
-        findall(EPos, exit(Room, EPos), ExitPos),
-        write('Choose an exit by entering the number: '), nl,
-        display_exits(ExitPos, 1),
-        select_exit(ExitPos, SelectedExit),
-        SelectedExit = (XE, YE),
-        NewMoves is Moves - 1,
-        move_char(Character, XE, YE),
-        move(NewMoves, Character, (XE, YE))
-      ; Option = 3, passage(Room, PassageRoom) ->
-        get_room_center(PassageRoom, Center),
-        Center = (XC, YC),
-        find_unoccupied_near(XC, YC, NXC, NYC),
-        move_char(Character, NXC, NYC), 
-        move(Moves, Character, (XC, YC))
+  % checking if already in room
+  in_room(Pos, Room) ->
+    write('Enter 1 to make a suggestion.'), nl,
+    write('Enter 2 to exit the room.'), nl,
+    (passage(Room, PassageRoom) ->
+        write('Enter 3 to take secret passage to '), write(PassageRoom), nl
       ;
-        write('Invalid option!'), nl,
-        move(Moves, Character, Pos)
-      )
-    ; 
-    % check if moved into entrance
-    is_entrance(Pos) ->
-      center_on_enter(Character, Pos, RoomEntered),
-      guess(Character, RoomEntered), !
-    ; 
-      NewMoves is Moves-1,
-      write('Choose direction (l/r/u/d): '), read(Direction),
-      ( Direction = l, X1 is X - 1, valid_move(X1, Y) ->
-        write(X1),
-        move_char(Character, X1, Y),
-        move(NewMoves, Character, (X1, Y))
-      ; Direction = r, X1 is X + 1, valid_move(X1, Y) ->
-        move_char(Character, X1, Y),
-        move(NewMoves, Character, (X1, Y))
-      ; Direction = d, Y1 is Y + 1, valid_move(X, Y1) ->
-        move_char(Character, X, Y1),
-        move(NewMoves, Character, (X, Y1))
-      ; Direction = u, Y1 is Y - 1, valid_move(X, Y1) ->
-        move_char(Character, X, Y1),
-        move(NewMoves, Character, (X, Y1))
-      ;
-        write('Invalid move! Try again.'), nl,
-        move(Moves, Character, (X, Y)) 
-      )
-    ).
+        true
+    ),
+    read(Option),
+    (Option = 1 ->
+      suggestion(Character, Room), nl,
+      guess(Character, Room), !
+    ; Option = 2 ->
+      findall(EPos, exit(Room, EPos), ExitPos),
+      write('Choose an exit by entering the number: '), nl,
+      display_exits(ExitPos, 1),
+      select_exit(ExitPos, SelectedExit),
+      SelectedExit = (XE, YE),
+      NewMoves is Moves - 1,
+      move_char(Character, XE, YE),
+      move(NewMoves, Character, (XE, YE))
+    ; Option = 3, passage(Room, PassageRoom) ->
+      get_room_center(PassageRoom, Center),
+      Center = (XC, YC),
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(Character, NXC, NYC), 
+      move(Moves, Character, (XC, YC))
+    ;
+      write('Invalid option!'), nl,
+      move(Moves, Character, Pos)
+    )
+  ; 
+  % check if moved into entrance
+  is_entrance(Pos) ->
+    center_on_enter(Character, Pos, RoomEntered),
+    suggestion(Character, RoomEntered),
+    guess(Character, RoomEntered), !
+  ; 
+    NewMoves is Moves-1,
+    write('Choose direction (l/r/u/d): '), read(Direction),
+    ( Direction = l, X1 is X - 1, valid_move(X1, Y) ->
+      write(X1),
+      move_char(Character, X1, Y),
+      move(NewMoves, Character, (X1, Y))
+    ; Direction = r, X1 is X + 1, valid_move(X1, Y) ->
+      move_char(Character, X1, Y),
+      move(NewMoves, Character, (X1, Y))
+    ; Direction = d, Y1 is Y + 1, valid_move(X, Y1) ->
+      move_char(Character, X, Y1),
+      move(NewMoves, Character, (X, Y1))
+    ; Direction = u, Y1 is Y - 1, valid_move(X, Y1) ->
+      move_char(Character, X, Y1),
+      move(NewMoves, Character, (X, Y1))
+    ;
+      write('Invalid move! Try again.'), nl,
+      move(Moves, Character, (X, Y)) 
+    )
+  ).
 
 % for finding unoccupied spots inside of rooms
 is_occupied(Pos) :- character(_, Pos, _).
@@ -163,14 +172,6 @@ find_unoccupied_near(X, Y, NewX, NewY) :-
     )
   ).
 
-% update character position
-move_char(Character, X, Y) :-
-  NewPos = (X, Y),
-  character(Character, OldPos, Cards),
-  retract(character(Character, OldPos, Cards)),
-  assert(character(Character, NewPos, Cards)),
-  print_board, nl.
-
 /* AI Movement */
 follow_path(0, _, _).
 follow_path(_, [], _).
@@ -179,19 +180,40 @@ follow_path(Moves, [PathPos|RemainingPath], CharName) :-
   move_char(CharName, X, Y),
   is_entrance(PathPos) ->
     center_on_enter(CharName, PathPos, RoomEntered),
-    guess(CharName, RoomEntered), !
+    agent_suggest(CharName, RoomEntered), !
   ;
     NewMoves is Moves-1,
     follow_path(NewMoves, RemainingPath, CharName).
 
-ai_move(Moves, CharName) :-
+ai_turn(Moves, CharName) :-
   character(CharName, CharPos, Cards),
   get_rooms(Cards, ValidRooms),
-  nearest_room(CharPos, ValidRooms, best_room(_, BestEntrance)),
-  astar(CharPos, BestEntrance, Path),
-  write(Path), nl,
-  follow_path(Moves, Path, CharName),
-  write('In progress'), nl.
+  (in_room(CharPos, Room) -> % agent if in room needs to 1. make suggestion, 2. exit, 3. take passage
+    (member(Room, ValidRooms) -> % if current room valid make suggestion
+      write('suggesting'), nl,
+      agent_suggest(CharName, Room), !
+    ; passage(Room, PassageRoom), valid_passage(CharName, Room) -> % if passage a valid room take it
+      write('taking passage'), nl,
+      get_room_center(PassageRoom, Center),
+      Center = (XC, YC),
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(CharName, NXC, NYC), 
+      ai_turn(Moves, CharName)
+    ; % else take exit
+      write('taking exit'), nl,
+      findall(EPos, exit(Room, EPos), ExitPos),
+      agent_exit(ExitPos, SelectedExit),
+      SelectedExit = (XE, YE),
+      NewMoves is Moves - 1,
+      move_char(CharName, XE, YE),
+      ai_turn(NewMoves, CharName)
+    )
+  ;
+    nearest_room(CharPos, ValidRooms, best_room(_, BestEntrance)),
+    astar(CharPos, BestEntrance, Path),
+    write(Path), nl,
+    follow_path(Moves, Path, CharName)
+  ).
 
 /* exit logic */
 % display available exits
@@ -231,6 +253,44 @@ suggestion(CurrChar, Room) :-
   validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
   write('Characters you can guess: '), write(GuessableChars), nl,
   validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
+  write('Current room: '), write(Room), nl,
+  % Move guessed character if they exist
+  (character(Character, _, _) ->
+      get_room_center(Room, Center),
+      Center = (XC, YC),
+      find_unoccupied_near(XC, YC, NXC, NYC),
+      move_char(Character, NXC, NYC)
+    ;
+      true
+  ),
+  % our version gets random card from the three cards guessed not in winning pile
+  winningcards(WinningCards),
+  % using room currently entered for suggestion
+  subtract([Weapon, Character, Room], WinningCards, RemainingCards),
+  subtract(RemainingCards, CharCards, RemainingCards2),
+  (
+    RemainingCards2 = [] ->
+    write('No one has cards from your suggestion.'), nl
+  ;
+    random_permutation(RemainingCards2, ShuffledRemaining),
+    ShuffledRemaining = [RandomCard|_],
+    write('Another player shows you: '), write(RandomCard), nl,
+    character(CurrChar, UpdatedPos, _), % need to refetch pos in case character moved
+    append(CharCards, [RandomCard], NewCharCards),
+    retract(character(CurrChar, UpdatedPos, CharCards)),
+    assert(character(CurrChar, UpdatedPos, NewCharCards))
+  ).
+
+/* AI Suggest */
+agent_suggest(CurrChar, Room) :-
+  character(CurrChar, _, CharCards),
+  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
+  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
+  write('Your current cards: '), write(CharCards), nl,
+  random_member(Weapon, GuessableWeapons),
+  random_member(Character, GuessableChars),
+  write('Weapon suggestion: '), write(Weapon), nl,
+  write('Character suggestion: '), write(Character), nl,
   write('Current room: '), write(Room), nl,
   % Move guessed character if they exist
   (character(Character, _, _) ->
@@ -299,6 +359,37 @@ guess(CurrChar, Room) :-
     guess(CurrChar, Room)
   ).
 
+/* AI win check */
+agent_guess(CurrChar, Room) :-
+  character(CurrChar, CurrPos, CharCards),
+  % let player know cards left that were not marked
+  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
+  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
+  random_member(Weapon, GuessableWeapons),
+  random_member(Character, GuessableChars),
+  write('Weapon guess: '), write(Weapon), nl,
+  write('Character guess: '), write(Character), nl,
+  write('Current room: '), write(Room), nl,
+  % Move guessed character if they exist
+  (character(Character, _, _) ->
+    get_room_center(Room, Center),
+    Center = (XC, YC),
+    find_unoccupied_near(XC, YC, NXC, NYC),
+    move_char(Character, NXC, NYC)
+  ;
+    true
+  ),
+  winningcards(WinningCards),
+  % using room currently entered for guess
+  (WinningCards = [Weapon, Character, Room] ->
+    write('Correct! '), write(CurrChar), write(' wins!'), nl,
+    retract(game_state(running)),
+    assert(game_state(finished))
+  ;
+    write('Incorrect Guess!'), nl,
+    write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
+    retract(character(CurrChar, CurrPos, CharCards)) 
+  ).
 /* main game loop */
 game_loop :-
   game_state(finished),
