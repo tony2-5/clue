@@ -135,7 +135,7 @@ move(Moves, Character, Pos) :-
     guess(Character, RoomEntered), !
   ; 
     NewMoves is Moves-1,
-    write('Choose direction (l/r/u/d): '), read(Direction),
+    write('Choose direction (l/r/u/d) or make accusation (a): '), read(Direction),
     ( Direction = l, X1 is X - 1, valid_move(X1, Y) ->
       write(X1),
       move_char(Character, X1, Y),
@@ -149,6 +149,8 @@ move(Moves, Character, Pos) :-
     ; Direction = u, Y1 is Y - 1, valid_move(X, Y1) ->
       move_char(Character, X, Y1),
       move(NewMoves, Character, (X, Y1))
+    ; Direction = a ->
+      outside_room_guess(Character)
     ;
       write('Invalid move! Try again.'), nl,
       move(Moves, Character, (X, Y)) 
@@ -326,7 +328,7 @@ agent_suggest(CurrChar, Room) :-
 
 /* Win check */
 guess(CurrChar, Room) :-
-  write('Would you like to guess? (y/n)'), nl,
+  write('Would you like to guess using this current room? (y/n)'), nl,
   read(Input),
   (Input = y ->
     character(CurrChar, CurrPos, CharCards),
@@ -362,6 +364,32 @@ guess(CurrChar, Room) :-
   ;
     write('Incorrect input!'), nl,
     guess(CurrChar, Room)
+  ).
+
+outside_room_guess(CurrChar) :-
+  write('Now guessing.'), nl,
+  character(CurrChar, CurrPos, CharCards),
+  % let player know cards left that were not marked
+  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
+  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
+  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room], CharCards, GuessableRooms),
+  write('Weapons you can guess: '), write(GuessableWeapons), nl,
+  validate_guess(GuessableWeapons, 'What weapon was used?: ', Weapon), nl,
+  write('Characters you can guess: '), write(GuessableChars), nl,
+  validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
+  write('Rooms you can guess: '), write(GuessableRooms), nl,
+  validate_guess(GuessableRooms, 'Where was the crime committed?: ', Room), nl,
+  % Not moving characters if guessing outside room
+  winningcards(WinningCards),
+  % using room currently entered for guess
+  (WinningCards = [Weapon, Character, Room] ->
+    write('Correct! '), write(CurrChar), write(' wins!'), nl,
+    retract(game_state(running)),
+    assert(game_state(finished))
+  ;
+    write('Incorrect Guess!'), nl,
+    write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
+    retract(character(CurrChar, CurrPos, CharCards)) 
   ).
 
 /* AI win check */
