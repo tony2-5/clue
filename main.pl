@@ -379,7 +379,15 @@ outside_room_guess(CurrChar) :-
   validate_guess(GuessableChars, 'Who commited the crime?: ', Character), nl,
   write('Rooms you can guess: '), write(GuessableRooms), nl,
   validate_guess(GuessableRooms, 'Where was the crime committed?: ', Room), nl,
-  % Not moving characters if guessing outside room
+  % Move guessed character if they exist
+  (character(Character, _, _) ->
+  get_room_center(Room, Center),
+  Center = (XC, YC),
+  find_unoccupied_near(XC, YC, NXC, NYC),
+  move_char(Character, NXC, NYC)
+  ;
+    true
+  ),
   winningcards(WinningCards),
   % using room currently entered for guess
   (WinningCards = [Weapon, Character, Room] ->
