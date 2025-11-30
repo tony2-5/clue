@@ -96,7 +96,6 @@ distribute_cards :-
   winningcards(WinningCards),
   subtract(AllCards, WinningCards, RemainingCards),
   random_permutation(RemainingCards, ShuffledCards),
-  write('Each characters cards: '), nl,
   distribute_to_characters(ShuffledCards, Characters).
 
 % recursive function to distribute cards
@@ -160,4 +159,5 @@ print_board :- forall(between(0, 23, Y), print_row(Y)).
 cleanup :-
   retractall(winningcards(_)),
   retractall(character(_,_,_)),
+  retractall(agent(_)),
   retractall(game_state(_)).
