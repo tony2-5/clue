@@ -29,7 +29,7 @@ play_turns([]).
 play_turns([Char|Rest]) :-
   (game_state(finished) ->
     !
-  ;
+  ; 
     take_turn(Char),
     play_turns(Rest)
   ).
@@ -328,10 +328,10 @@ agent_suggest(CurrChar, Room) :-
 
 /* Win check */
 guess(CurrChar, Room) :-
-  write('Would you like to guess using this current room? (y/n)'), nl,
+  write('Would you like to make an accusation using this current room? (y/n)'), nl,
   read(Input),
   (Input = y ->
-    character(CurrChar, CurrPos, CharCards),
+    character(CurrChar, _, CharCards),
     % let player know cards left that were not marked
     subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
     subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
@@ -355,9 +355,9 @@ guess(CurrChar, Room) :-
       retract(game_state(running)),
       assert(game_state(finished))
     ;
-      write('Incorrect Guess!'), nl,
+      write('Incorrect Accusation!'), nl,
       write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
-      retract(character(CurrChar, CurrPos, CharCards)) 
+      retractall(character(CurrChar, _, _))
     )
   ; Input = n -> 
     true
@@ -367,8 +367,8 @@ guess(CurrChar, Room) :-
   ).
 
 outside_room_guess(CurrChar) :-
-  write('Now guessing.'), nl,
-  character(CurrChar, CurrPos, CharCards),
+  write('Now accusing.'), nl,
+  character(CurrChar, _, CharCards),
   % let player know cards left that were not marked
   subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
   subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
@@ -395,14 +395,14 @@ outside_room_guess(CurrChar) :-
     retract(game_state(running)),
     assert(game_state(finished))
   ;
-    write('Incorrect Guess!'), nl,
+    write('Incorrect Accusation!'), nl,
     write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
-    retract(character(CurrChar, CurrPos, CharCards)) 
+    retractall(character(CurrChar, _, _))
   ).
 
 /* AI win check */
 agent_guess(CurrChar, Room) :-
-  character(CurrChar, CurrPos, CharCards),
+  character(CurrChar, _, CharCards),
   % let player know cards left that were not marked
   subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
   subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
@@ -427,9 +427,9 @@ agent_guess(CurrChar, Room) :-
     retract(game_state(running)),
     assert(game_state(finished))
   ;
-    write('Incorrect Guess!'), nl,
+    write('Incorrect Accusation!'), nl,
     write('Character '), write(CurrChar), write(' has been eliminated!'), nl,
-    retract(character(CurrChar, CurrPos, CharCards)) 
+    retractall(character(CurrChar, _, _)) 
   ).
 /* main game loop */
 game_loop :-
