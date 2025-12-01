@@ -148,7 +148,7 @@ print_cell(X, Y) :-
   ; in_room(Pos, hall) -> write('H  ')
   ; in_room(Pos, lounge) -> write('Lo ')
   ; in_room(Pos, dining_room) -> write('Di ')
-  ; in_room(Pos, center) -> write('C  ')
+  ; in_room(Pos, center) -> write('Ce ')
   ; is_hallway(Pos) -> write('x  ')
   ).
 
