@@ -7,10 +7,27 @@ agent_setup :-
   (NumPlayers > 0, NumPlayers =< 6 ->
     NumAgents is 6-NumPlayers,
     findall(Character, character(Character,_,_), CharacterList),
-    init_agents(NumAgents, CharacterList)
+    choose_character(NumPlayers, NumPlayers, CharacterList, RemainingCharacters), % players choose their characters, agents fill in rest
+    init_agents(NumAgents, RemainingCharacters)
   ;
     write('Incorrect input! Please enter a number between 1 and 6.'), nl,
     agent_setup
+  ).
+
+% choose your character
+choose_character(_,0,RemainingCharacters,RemainingCharacters).
+choose_character(TotalPlayers, NumPlayers, CharacterList, RemainingCharacters) :-
+  write('Choose from the following characters: '), write(CharacterList), nl,
+  read(CharacterInput),
+  (member(CharacterInput, CharacterList) ->
+    subtract(CharacterList, [CharacterInput], Remaining),
+    CurrentPlayer is TotalPlayers-NumPlayers+1,
+    RemainingPlayers is NumPlayers-1,
+    write('Player '), write(CurrentPlayer), write(' chose: '), write(CharacterInput), nl,
+    choose_character(TotalPlayers, RemainingPlayers, Remaining, RemainingCharacters)
+  ;
+    write('Invalid character selection, try again.'), nl,
+    choose_character(TotalPlayers, NumPlayers, CharacterList, RemainingCharacters)
   ).
 
 /* initialize agents */
