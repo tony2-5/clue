@@ -43,10 +43,18 @@ take_turn(CharName) :-
   roll_dice(Moves),
   write('You rolled a '), write(Moves), nl,
   print_board, nl,
-  (agent(CharName) ->
-    ai_turn(Moves, CharName)
+  findall(Character, character(Character,_,_), CharacterList),
+  length(CharacterList, Length), % checking to see if only one character left to end game
+  (Length = 1 ->
+    write('All other players eliminated '), write(CharacterList), write(' wins!'), nl,
+    retract(game_state(running)),
+    assert(game_state(finished))
   ;
-    move(Moves, CharName, CurrentPos)
+    (agent(CharName) ->
+      ai_turn(Moves, CharName)
+    ;
+      move(Moves, CharName, CurrentPos)
+    )
   ).
 
 /* Movement logic */
