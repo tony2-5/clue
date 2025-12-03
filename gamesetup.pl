@@ -85,7 +85,7 @@ winning_cards :-
   random_member(Y, [miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum]),
   random_member(Z, [kitchen, ballroom, conservatory, billiard_room, library, study, hall, lounge, dining_room]),
   assert(winningcards([X,Y,Z])).
-  % write('Winning cards: '), write([X,Y,Z]), nl. display winning cards at game start
+  % write('Winning cards: '), write([X,Y,Z]), nl. uncomment to display winning cards at game start
   
 % distribute cards not including cards from winning card set
 distribute_cards :-
@@ -105,7 +105,7 @@ distribute_to_characters([C1,C2,C3|RestCards], [Char|RestChars]) :-
     character(Char, Pos, _),
     retract(character(Char, Pos, _)),
     assert(character(Char, Pos, [C1,C2,C3])),
-    % write(Char), write([C1,C2,C3]), nl, to see which cards each player has at game start
+    % write(Char), write([C1,C2,C3]), nl, uncomment to see which cards each player has at game start
     distribute_to_characters(RestCards, RestChars).
 
 /* print board */

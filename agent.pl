@@ -125,5 +125,3 @@ astar_search([[F, G, CurrPos, Path]|RemainingNodes], Goal, Visited, FinalPath) :
   neighbor((X, Y), (X, Y1)) :-
     Y1 is Y + 1,
     is_hallway((X, Y1)).
-
-% PICK BEST EXIT
