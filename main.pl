@@ -323,7 +323,7 @@ agent_suggest(CurrChar, Room) :-
   (
     RemainingCards2 = [] ->
     write('No one has cards from your suggestion.'), nl,
-    agent_guess(CurrChar, Room) % agent guesses once it know it will get it right
+    agent_guess(CurrChar, [Weapon, Character, Room],Room) % agent guesses once it know it will get it right
   ;
     random_permutation(RemainingCards2, ShuffledRemaining),
     ShuffledRemaining = [RandomCard|_],
@@ -409,13 +409,9 @@ outside_room_guess(CurrChar) :-
   ).
 
 /* AI win check */
-agent_guess(CurrChar, Room) :-
-  character(CurrChar, _, CharCards),
-  % let player know cards left that were not marked
-  subtract([candlestick, dagger, lead_pipe, revolver, rope, wrench], CharCards, GuessableWeapons),
-  subtract([miss_scarlett, colonel_mustard, mrs_white, reverend_green, mrs_peacock, professor_plum], CharCards, GuessableChars),
-  random_member(Weapon, GuessableWeapons),
-  random_member(Character, GuessableChars),
+agent_guess(CurrChar, Suggestion, Room) :-
+  character(CurrChar, _, _),
+  [Weapon, Character, Room] = Suggestion,
   write('Weapon guess: '), write(Weapon), nl,
   write('Character guess: '), write(Character), nl,
   write('Current room: '), write(Room), nl,
