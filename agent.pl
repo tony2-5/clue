@@ -42,7 +42,7 @@ init_agents(NumberOfPlayers,[Char|Rest]) :-
 /* ai card management functions */
 % get known room cards to ensure ai agent doesnt go to rooms that arent winning
 get_rooms(AgentCards, ValidRooms) :-
-  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, dining_room, lounge, hall, center], AgentCards, GoodRooms),
+  subtract([kitchen, ballroom, conservatory, billiard_room, library, study, dining_room, lounge, hall], AgentCards, GoodRooms),
   ValidRooms = GoodRooms.
 
 /* ai movement logic (A* search) */

@@ -42,7 +42,7 @@ exit(conservatory, (17, 4)).
 exit(billiard_room, (17, 8)).
 exit(billiard_room, (22, 12)).
 exit(library, (16, 15)).
-exit(library, (20, 14)).
+exit(library, (20, 12)).
 exit(study, (17, 19)).
 exit(hall, (15, 19)).
 exit(hall, (12, 16)).
